@@ -1,5 +1,9 @@
 # Time Conversion library
-[![codecov](https://codecov.io/gh/winksaville/time-ms-conversion/branch/main/graph/badge.svg?token=cowZtK1KK1)](https://codecov.io/gh/winksaville/time-ms-conversion)
+
+![ci-stable](https://github.com/winksaville/time-ms-conversions/actions/workflows/ci-stable.yml/badge.svg)
+![ci-nightly](https://github.com/winksaville/time-ms-conversions/actions/workflows/ci-nightly.yml/badge.svg)
+[![codecov](https://codecov.io/gh/winksaville/time-ms-conversions/branch/main/graph/badge.svg?token=jIcgxDK2K4)](https://codecov.io/gh/winksaville/time-ms-conversions)
+
 Various routines to convert time_ms to and from UTC
 
 ```
