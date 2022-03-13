@@ -1,5 +1,5 @@
 # Time Conversion library
-
+[![codecov](https://codecov.io/gh/winksaville/time-ms-conversion/branch/main/graph/badge.svg?token=cowZtK1KK1)](https://codecov.io/gh/winksaville/time-ms-conversion)
 Various routines to convert time_ms to and from UTC
 
 ```
