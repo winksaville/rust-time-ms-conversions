@@ -52,6 +52,9 @@ pub fn time_ms_to_utc_string(time_ms: i64) -> String {
     time_ms_to_utc(time_ms).to_rfc3339_opts(SecondsFormat::Millis, false)
 }
 
+pub fn time_ms_to_utc_z_string(time_ms: i64) -> String {
+    time_ms_to_utc(time_ms).to_rfc3339_opts(SecondsFormat::Millis, true)
+}
 /// Get Utc::now() and convert to time_ms
 ///
 /// # Example
@@ -472,6 +475,12 @@ mod test {
     fn test_time_ms_to_utc_string() {
         let dt = time_ms_to_utc_string(0i64);
         assert_eq!(dt, "1970-01-01T00:00:00.000+00:00");
+    }
+
+    #[test]
+    fn test_time_ms_to_utc_z_string() {
+        let dt = time_ms_to_utc_z_string(0i64);
+        assert_eq!(dt, "1970-01-01T00:00:00.000Z");
     }
 
     #[test]
