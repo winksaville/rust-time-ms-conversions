@@ -125,6 +125,18 @@ pub enum TzMassaging {
 ///     .expect("Bad time format");
 /// assert_eq!(ts, 0);
 ///
+/// // If timezone is 'Z' for UTC that's fine
+/// let str_time_no_ms = "1970-01-01 00:00:00Z";
+/// let ts = dt_str_to_utc_time_ms(str_time_no_ms, TzMassaging::CondAddTzUtc)
+///     .expect("Bad time format");
+/// assert_eq!(ts, 0);
+///
+/// // If timezone is 'Z' for UTC that's fine
+/// let str_time_no_ms = "1970-01-01T00:00:00Z";
+/// let ts = dt_str_to_utc_time_ms(str_time_no_ms, TzMassaging::CondAddTzUtc)
+///     .expect("Bad time format");
+/// assert_eq!(ts, 0);
+///
 /// // And CondAddTzUtz handles other time zones and converts them to Utc
 /// let str_time_pst = "1969-12-31T16:00:00-0800";
 /// let ts_utc = dt_str_to_utc_time_ms(str_time_pst, TzMassaging::CondAddTzUtc)
@@ -178,33 +190,41 @@ pub fn dt_str_to_utc_time_ms(
                 Ok(fo_to_time_ms(&dtfo))
             }
             TzMassaging::CondAddTzUtc => {
-                let fs = format!("{fmt_str}%#z");
-
-                // If there is a '+' then there "must be" a time zone
-                let has_pos_tz = dt_str.matches('+').count() > 0;
-
-                // If there is a '-' after the "year" then there must be a time zone
-                let mut rmtchr = dt_str.rmatch_indices('-');
-                let first_rmatch = rmtchr.next();
-                let has_neg_tz = if let Some((idx, _s)) = first_rmatch {
-                    // If there is a '-' after index 7 then assume there is a negative time zone
-                    //     2020-01-01T...
-                    //     01234567
-                    idx > 7
+                // Check if we have a Z|z timezone
+                let last_char = dt_str.chars().last();
+                if last_char == Some('Z') || last_char == Some('z') {
+                    let fs = format!("{fmt_str}%#z");
+                    let dtfo = DateTime::parse_from_str(dt_str, &fs)?;
+                    Ok(fo_to_time_ms(&dtfo))
                 } else {
-                    // No numeric timezone
-                    false
-                };
+                    // No, see if there is a '+' then there "must be" a time zone
+                    let has_pos_tz = dt_str.matches('+').count() > 0;
 
-                let s = if !has_pos_tz && !has_neg_tz {
-                    // Add numeric timezone for UTC
-                    format!("{dt_str}+0000")
-                } else {
-                    // Else there is one so just convert dt_str to String
-                    dt_str.to_string()
-                };
-                let dtfo = DateTime::parse_from_str(&s, &fs)?;
-                Ok(fo_to_time_ms(&dtfo))
+                    // If there is a '-' after the "year" then there must be a time zone
+                    let mut rmtchr = dt_str.rmatch_indices('-');
+                    let first_rmatch = rmtchr.next();
+                    let has_neg_tz = if let Some((idx, _s)) = first_rmatch {
+                        // If there is a '-' after index 7 then assume there is a negative time zone
+                        //     2020-01-01T...
+                        //     01234567
+                        idx > 7
+                    } else {
+                        // No numeric timezone
+                        false
+                    };
+
+                    let s = if !has_pos_tz && !has_neg_tz {
+                        // Add numeric timezone for UTC
+                        format!("{dt_str}+0000")
+                    } else {
+                        // Else there is one so just convert dt_str to String
+                        dt_str.to_string()
+                    };
+
+                    let fs = format!("{fmt_str}%#z");
+                    let dtfo = DateTime::parse_from_str(&s, &fs)?;
+                    Ok(fo_to_time_ms(&dtfo))
+                }
             }
             TzMassaging::LocalTz => {
                 // Convert datetime string to DateTime<Local>
@@ -308,6 +328,18 @@ mod test {
             .expect("Bad time format with milliseconds");
         dbg!(tms);
         assert_eq!(tms, 123);
+
+        let str_time_with_ms = "1970-01-01T00:00:00.123Z";
+        let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::CondAddTzUtc)
+            .expect("Bad time format with milliseconds with Z");
+        dbg!(tms);
+        assert_eq!(tms, 123);
+
+        let str_time_with_ms = "1970-01-01T00:00:00.123z";
+        let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::CondAddTzUtc)
+            .expect("Bad time format with milliseconds with z");
+        dbg!(tms);
+        assert_eq!(tms, 123);
     }
 
     #[test]
@@ -318,9 +350,21 @@ mod test {
         dbg!(ts);
         assert_eq!(ts, 0);
 
-        let str_time_with_ms = "1970-01-01 00:00:00.123";
+        let str_time_with_ms = "1970-01-01 00:00:00z";
+        let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::CondAddTzUtc)
+            .expect("Bad time format with seconds with z");
+        dbg!(tms);
+        assert_eq!(tms, 0);
+
+        let str_time_with_ms = "1970-01-01 00:00:00.123Z";
         let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::CondAddTzUtc)
             .expect("Bad time format with milliseconds");
+        dbg!(tms);
+        assert_eq!(tms, 123);
+
+        let str_time_with_ms = "1970-01-01T00:00:00.123z";
+        let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::CondAddTzUtc)
+            .expect("Bad time format with milliseconds and z");
         dbg!(tms);
         assert_eq!(tms, 123);
     }
@@ -338,13 +382,13 @@ mod test {
             .expect("Bad time format with milliseconds");
         dbg!(tms);
         assert_eq!(tms, 123);
-        let str_time_no_ms = " 1970-01-01T00:00:00  ";
+        let str_time_no_ms = " 1970-01-01T00:00:00z  ";
         let ts = dt_str_to_utc_time_ms(str_time_no_ms, TzMassaging::CondAddTzUtc)
             .expect("Bad time format");
         dbg!(ts);
         assert_eq!(ts, 0);
 
-        let str_time_with_ms = "  1970-01-01T00:00:00.123  ";
+        let str_time_with_ms = "  1970-01-01T00:00:00.123Z  ";
         let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::CondAddTzUtc)
             .expect("Bad time format with milliseconds");
         dbg!(tms);
@@ -391,7 +435,13 @@ mod test {
         dbg!(ts);
         assert_eq!(ts, 0);
 
-        let str_time_with_ms = "1970-01-01T00:00:00.123+00:00";
+        let str_time_no_ms = "1970-01-01T00:00:00Z";
+        let ts =
+            dt_str_to_utc_time_ms(str_time_no_ms, TzMassaging::HasTz).expect("Bad time format");
+        dbg!(ts);
+        assert_eq!(ts, 0);
+
+        let str_time_with_ms = "1970-01-01T00:00:00.123z";
         let tms = dt_str_to_utc_time_ms(str_time_with_ms, TzMassaging::HasTz)
             .expect("Bad time format with milliseconds");
         dbg!(tms);
@@ -490,6 +540,6 @@ mod test {
             Ok(v) => v,
             Err(e) => panic!("shit {e}"),
         };
-        println!("test_date_teim_parse_from_rfc3339: {dt}");
+        println!("test_date_time_parse_from_rfc3339: {dt}");
     }
 }
